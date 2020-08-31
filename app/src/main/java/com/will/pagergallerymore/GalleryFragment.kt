@@ -31,7 +31,7 @@ class GalleryFragment : Fragment() {
             layoutManager = StaggeredGridLayoutManager(2,StaggeredGridLayoutManager.VERTICAL)
         }
 
-        galleryViewModel.dataListPhoto.observe(viewLifecycleOwner, Observer {
+        galleryViewModel.pagedListLiveData.observe(viewLifecycleOwner, Observer {
             galleryAdapter.submitList(it)
             swipeLayoutGallery.isRefreshing = false
         })
@@ -64,6 +64,9 @@ class GalleryFragment : Fragment() {
             R.id.swipeIndicator ->{
                 swipeLayoutGallery.isRefreshing = true
                 Handler().postDelayed(Runnable { galleryViewModel.resetQuery() },1000)
+            }
+            R.id.retry ->{
+                galleryViewModel.retry()
             }
         }
         return super.onOptionsItemSelected(item)
