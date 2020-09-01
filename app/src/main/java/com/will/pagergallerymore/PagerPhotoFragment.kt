@@ -17,6 +17,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.get
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.Observer
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
@@ -31,6 +33,7 @@ const val REQUEST_WRITE_EXTERNAL_STORAGE = 1
 
 class PagerPhotoFragment : Fragment() {
 
+    val galleryViewModel by activityViewModels<GalleryViewModel>()
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -41,23 +44,23 @@ class PagerPhotoFragment : Fragment() {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        val photoList: ArrayList<PhotoItem>? =
-            arguments?.getParcelableArrayList<PhotoItem>("PHOTO_LIST")
-        PagerPhotoListAdapter().apply {
-            viewPager2.adapter = this
-            submitList(photoList)
-        }
+        val adapter = PagerPhotoListAdapter()
+        viewPager2.adapter = adapter
+        galleryViewModel.pagedListLiveData.observe(viewLifecycleOwner, Observer {
+            adapter.submitList(it)
+            //设置当前列的位置数据
+            viewPager2.setCurrentItem(arguments?.getInt("PHOTO_POSITION") ?: 0, false)
+        })
 
         viewPager2.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             @SuppressLint("SetTextI18n")
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
-                photoTag.text = getString(R.string.photo_tag, position + 1, photoList?.size)
+                photoTag.text = getString(R.string.photo_tag, position + 1, galleryViewModel.pagedListLiveData.value?.size)
             }
         })
 
-        //设置当前列的位置数据
-        viewPager2.setCurrentItem(arguments?.getInt("PHOTO_POSITION") ?: 0, false)
+
 
         // 去掉滑动到边的动画阴影的方法
         viewPager2.apply {

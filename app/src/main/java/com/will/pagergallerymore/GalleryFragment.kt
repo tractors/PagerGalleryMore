@@ -4,15 +4,16 @@ import android.os.Bundle
 import android.os.Handler
 import android.view.*
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
+
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import kotlinx.android.synthetic.main.fragment_gallery.*
 
 class GalleryFragment : Fragment() {
 
-    private val galleryViewModel by viewModels<GalleryViewModel>()
+    private val galleryViewModel by activityViewModels<GalleryViewModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -25,15 +26,23 @@ class GalleryFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         setHasOptionsMenu(true)
-        val galleryAdapter = GalleryAdapter()
+        val galleryAdapter = GalleryAdapter(galleryViewModel)
         recyclerView.apply {
             adapter = galleryAdapter
             layoutManager = StaggeredGridLayoutManager(2,StaggeredGridLayoutManager.VERTICAL)
         }
 
+        //pagedListLiveData 数据变化的观察
         galleryViewModel.pagedListLiveData.observe(viewLifecycleOwner, Observer {
             galleryAdapter.submitList(it)
-            swipeLayoutGallery.isRefreshing = false
+
+        })
+
+        //网络状态的变化观察
+        galleryViewModel.networkStatus.observe(viewLifecycleOwner, Observer {
+            galleryAdapter.updateNetworkStatus(it)
+
+            swipeLayoutGallery.isRefreshing = it == NetworkStatus.INITIAL_LOADING
         })
 //        galleryViewModel = ViewModelProvider(this,ViewModelProvider.AndroidViewModelFactory(requireActivity().application)).get(GalleryViewModel::class.java)
 
@@ -63,7 +72,7 @@ class GalleryFragment : Fragment() {
         when(item.itemId){
             R.id.swipeIndicator ->{
                 swipeLayoutGallery.isRefreshing = true
-                Handler().postDelayed(Runnable { galleryViewModel.resetQuery() },1000)
+                Handler().postDelayed({ galleryViewModel.resetQuery() },1000)
             }
             R.id.retry ->{
                 galleryViewModel.retry()

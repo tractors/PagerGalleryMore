@@ -2,7 +2,6 @@ package com.will.pagergallerymore
 
 import android.content.Context
 import android.util.Log
-import android.util.MutableDouble
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.paging.PageKeyedDataSource
@@ -10,8 +9,11 @@ import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.StringRequest
 import com.google.gson.Gson
+
 private const val TAG = "PixabayDataSource"
 enum class NetworkStatus{
+    INITIAL_LOADING,
+    LOADED,
     LOADING,
     FAILED,
     COMPLETED
@@ -31,18 +33,18 @@ class PixabayDataSource(private val context:Context) : PageKeyedDataSource<Int,P
         params: LoadInitialParams<Int>,
         callback: LoadInitialCallback<Int, PhotoItem>
     ) {
-
-        _networkStatus.postValue(NetworkStatus.LOADING)
+        retry = null
+        _networkStatus.postValue(NetworkStatus.INITIAL_LOADING)
         val url = "https://pixabay.com/api/?key=18052656-ccd8aa3aa1747309043e02819&q=${queryKey}&per_page=50&page=1"
 
         StringRequest(
             Request.Method.GET,
             url,
             Response.Listener{
-                retry = null
                 val dataList = Gson().fromJson(it, Pixabay::class.java).hits.toList()
 
                 callback.onResult(dataList,null,2)
+                _networkStatus.postValue(NetworkStatus.LOADED)
             },
             Response.ErrorListener {
                 Log.e(TAG, "loadInitial: $it" )
@@ -55,6 +57,7 @@ class PixabayDataSource(private val context:Context) : PageKeyedDataSource<Int,P
     }
 
     override fun loadAfter(params: LoadParams<Int>, callback: LoadCallback<Int, PhotoItem>) {
+        retry = null
         _networkStatus.postValue(NetworkStatus.LOADING)
         val url = "https://pixabay.com/api/?key=18052656-ccd8aa3aa1747309043e02819&q=${queryKey}&per_page=50&page=${params.key}"
 
@@ -62,9 +65,9 @@ class PixabayDataSource(private val context:Context) : PageKeyedDataSource<Int,P
             Request.Method.GET,
             url,
             Response.Listener {
-                retry = null
                 val dataList = Gson().fromJson(it, Pixabay::class.java).hits.toList()
                 callback.onResult(dataList,params.key +1)
+                _networkStatus.postValue(NetworkStatus.LOADED)
             },
             Response.ErrorListener {
                 Log.e(TAG, "loadAfter: $it" )
